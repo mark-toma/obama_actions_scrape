@@ -1,16 +1,10 @@
 %% export_obama_actions
 
-clear all;
+% clear all;
 load obama_actions.mat
 num_blank = 0;
 
 N = length({a.date_string});
-
-head = {'type','subtype','uri','date','title'};
-out = [{a.type}',{a.sub_type}',{a.uri}',{a.date_string}',{a.title}'];
-
-xlswrite('obama_actions_meta.xls',[head;out]);
-
 
 %%
 for jj = 1:N
@@ -33,7 +27,7 @@ for jj = 1:N
   tmp = strsplit(uri,'/');
   fname = tmp{end};
   fname = regexprep(fname,',','');
-  fname = regexprep(fname,'.','');
+  fname = regexprep(fname,'\.','');
   fname = regexprep(fname,'(','');
   fname = regexprep(fname,')','');
   txt = a(jj).plaintext;
@@ -45,8 +39,11 @@ for jj = 1:N
     fprintf(fid,'Does not exist.\n');
   end
   fclose(fid);
-  
+  ffp{jj,1} = fullfilepath;
 end
 
+head = {'type','subtype','uri','date','title','fullfilepath'};
+out = [{a.type}',{a.sub_type}',{a.uri}',{a.date_string}',{a.title}',ffp];
 
+xlswrite('obama_actions_meta.xls',[head;out]);
 
