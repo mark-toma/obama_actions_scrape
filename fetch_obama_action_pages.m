@@ -1,0 +1,123 @@
+%% fetch_obama_action_pages
+
+function all_actions = fetch_obama_action_pages()
+% function fetch_obama_action_pages()
+
+% clc;
+
+
+%%
+page_start = 1;
+page_end = 212;
+all_actions = [];
+for page_number = page_start:page_end
+  page_number
+  fname = sprintf('obama_actions_page_%d',page_number);
+  
+  
+  %%
+  
+  params = {...
+    'term_node_tid_depth','46',...
+    'page',num2str(page_number-1)};
+  
+  URL_BASE = 'https://obamawhitehouse.archives.gov';
+  URI_ACTIONS = '/briefing-room/presidential-actions';
+  URL_ACTIONS = [URL_BASE,URI_ACTIONS];
+  
+  [s,status] = urlread(URL_ACTIONS,'get',params);
+  
+  
+  %%
+  
+  % fid = fopen(sprintf('%s.html',fname),'w');
+  % fprintf(fid,s)
+  % fclose(fid);
+  
+  % parse out the list for this page.
+  
+  a = getActionsFromPage(s);
+  a = addTextToAction(a,URL_BASE);
+  all_actions = [all_actions,a];
+  
+  
+end
+end
+
+
+
+function a = getActionsFromPage(s)
+
+% trim input to single container tag
+
+tmp = strfind(s,'<div class="views-row')';
+
+for ii=1:length(tmp)
+  
+  id_open = strfind(s(tmp(ii):end),'<div');
+  id_entry = id_open(1):id_open(4)-1;
+  str_entry = s(tmp(ii)+id_entry-1);
+  
+  a(ii) = actionStruct(str_entry);
+  
+end
+
+end
+
+function as = actionStruct(e)
+
+div_close = strfind(e,'</div');
+
+as.type = e( strfind(e,'<strong>')+8:strfind(e,'</strong>')-1 );
+as.date_string = e( strfind(e,'</strong')+13:div_close(1)-1 );
+
+h = e(strfind(e,'<a href=')+6:strfind(e,'</a>')-1 );
+
+as.uri = h(4:strfind(h,'">')-1);
+as.sub_type = strtrim(h(strfind(h,'">')+2:strfind(h,' -- ')-1));
+as.title = h(strfind(h,' -- ')+4: end);
+
+
+end
+
+function a = addTextToAction(a,url_base)
+
+for ii=1:length(a)
+  url = [url_base,a(ii).uri]
+  try
+  s = urlread(url);
+  catch e
+    a(ii).content_html = [];
+    a(ii).plaintext = [];
+    continue;
+  end
+  id_start = strfind(s,'<div id="content-start');
+  id_end = strfind(s,'</div');
+  
+  idx = find(id_end>id_start);
+  
+  html = s(id_start:id_end(idx(16))+5);
+  a(ii).content_html = html;
+  
+  % Use regular expressions to remove undesired markup.
+  txt = html;
+  txt = regexprep(txt,'<p.*?>','\n');
+  txt = regexprep(txt,'</.*?p>','');
+  txt = regexprep(txt,'&nbsp;',' ');
+  
+  txt = regexprep(txt,'<.*?>','');
+  
+  txt = regexprep(txt,'\t','');
+  txt = regexprep(txt,'\r','\n');
+  txt = regexprep(txt,'\n{2,}','\n\n');
+  txt = strtrim(txt);
+  a(ii).plaintext = txt;
+end
+
+end
+
+
+
+
+
+
